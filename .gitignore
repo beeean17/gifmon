@@ -1,0 +1,37 @@
+# Xcode
+*.xcuserstate
+xcuserdata/
+DerivedData/
+*.xccheckout
+*.moved-aside
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+
+# Build
+build/
+*.o
+*.d
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# CocoaPods
+Pods/
+Podfile.lock
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Vim / Emacs
+*~
+.*.swp
