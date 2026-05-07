@@ -7,6 +7,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private let gifController = GIFController()
     private var overlay: OverlayWindowController?
     private var statusBar: StatusBarController?
+    private var onboarding: OnboardingWindowController?
     private var monitorTarget: MonitorTarget = .cpu
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -17,12 +18,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let scale    = defaults.object(forKey: UserDefaultsKeys.windowScale) as? Double ?? 1.0
         let moveMode = defaults.bool(forKey: UserDefaultsKeys.moveMode)
 
-        // Overlay window
+        // Overlay window (hidden until GIF is loaded)
         let ow = OverlayWindowController()
         overlay = ow
         ow.setScale(scale)
         ow.setMoveMode(moveMode)
-        ow.showOverlay()
 
         gifController.onFrame = { [weak ow] image in
             ow?.updateFrame(image)
@@ -58,7 +58,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             // LaunchAtLogin service: Step 7
         }
 
-        // Resource monitor → GIFController speed + status bar label
+        // Resource monitor
         monitor.onUpdate = { [weak self] cpu, ram in
             guard let self else { return }
             let usage: Double
@@ -72,9 +72,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         monitor.start()
 
-        // Restore saved GIF from previous session
+        // First run: show onboarding; otherwise restore saved GIF
         if let path = defaults.string(forKey: UserDefaultsKeys.gifFilePath) {
             loadGIF(url: URL(fileURLWithPath: path))
+        } else {
+            showOnboarding()
         }
     }
 
@@ -90,10 +92,26 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             try gifController.load(gifURL: url)
             gifController.start()
             UserDefaults.standard.set(url.path, forKey: UserDefaultsKeys.gifFilePath)
+            overlay?.showOverlay()
         } catch {
             print("[GifCat] GIF load failed: \(error)")
         }
     }
+
+    // MARK: - Onboarding
+
+    private func showOnboarding() {
+        let oc = OnboardingWindowController()
+        onboarding = oc
+        oc.onGIFSelected = { [weak self] url in
+            self?.onboarding?.hide()
+            self?.onboarding = nil
+            self?.loadGIF(url: url)
+        }
+        oc.show()
+    }
+
+    // MARK: - GIF swap (from menu)
 
     private func openGIFPanel() {
         let panel = NSOpenPanel()
