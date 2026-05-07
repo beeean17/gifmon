@@ -4,10 +4,19 @@ import AppKit
 class AppDelegate: NSObject, NSApplicationDelegate {
     private let monitor = ResourceMonitor()
     private let gifController = GIFController()
+    private var overlay: OverlayWindowController?
     var monitorTarget: MonitorTarget = .cpu
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+
+        let ow = OverlayWindowController()
+        overlay = ow
+        ow.showOverlay()
+
+        gifController.onFrame = { [weak ow] image in
+            ow?.updateFrame(image)
+        }
 
         monitor.onUpdate = { [weak self] cpu, ram in
             guard let self else { return }
