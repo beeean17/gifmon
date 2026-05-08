@@ -140,6 +140,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         sb.onGIFAdd = { [weak self] in
             self?.openGIFPanel(replaceExisting: false)
         }
+        sb.onGIFRestartAll = { [weak self] in
+            self?.restartAllGIFs()
+        }
         sb.onGIFReplaceAll = { [weak self] in
             self?.openGIFPanel(replaceExisting: true)
         }
@@ -204,6 +207,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         let window = OverlayWindowController(id: id, cascadeIndex: overlays.count)
+        window.onDeleteRequested = { [weak self] in
+            self?.removeGIF(id: id, showPickerWhenEmpty: false)
+        }
         window.setEditMode(isEditMode)
         if !hasSavedFrame(for: id) {
             window.setScale(windowScale)
@@ -234,6 +240,28 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         } catch {
             statusBar?.showGIFError("'\(url.lastPathComponent)' 파일을 읽을 수 없습니다.")
             return false
+        }
+    }
+
+    private func restartAllGIFs() {
+        for overlay in overlays {
+            overlay.controller.restart()
+        }
+        menuBarGIFController?.restart()
+    }
+
+    private func removeGIF(id: String, showPickerWhenEmpty: Bool) {
+        guard let index = overlays.firstIndex(where: { $0.id == id }) else { return }
+        let overlay = overlays.remove(at: index)
+        overlay.controller.stop()
+        overlay.window.hideOverlay()
+        clearSavedFrame(for: id)
+        saveOverlayList()
+        if overlays.isEmpty {
+            UserDefaults.standard.removeObject(forKey: UserDefaultsKeys.gifFilePath)
+            if showPickerWhenEmpty {
+                showOnboarding()
+            }
         }
     }
 
@@ -424,6 +452,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func hasSavedFrame(for id: String) -> Bool {
         UserDefaults.standard.object(forKey: "overlay.\(id).\(UserDefaultsKeys.windowX)") != nil
+    }
+
+    private func clearSavedFrame(for id: String) {
+        let defaults = UserDefaults.standard
+        for key in [UserDefaultsKeys.windowX,
+                    UserDefaultsKeys.windowY,
+                    UserDefaultsKeys.windowWidth,
+                    UserDefaultsKeys.windowHeight] {
+            defaults.removeObject(forKey: "overlay.\(id).\(key)")
+        }
     }
 
     // MARK: - Onboarding

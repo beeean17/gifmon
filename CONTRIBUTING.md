@@ -124,6 +124,8 @@ To add more preset options, edit the `for fps in [...]` arrays in `StatusBarCont
 - `AppDelegate` owns an array of managed overlay records
 - Each overlay instance owns its own `GIFController` and `OverlayWindowController`
 - Overlay window frames are namespaced in `UserDefaults`
+- Edit mode exposes per-overlay move, resize, and delete controls
+- `GIFController.restart()` resets playback to the first frame so all visible GIFs can be synced from the menu
 - The active overlay list is stored under `gifOverlays`
 - All overlays share one `ResourceMonitor`
 

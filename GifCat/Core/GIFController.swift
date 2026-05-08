@@ -50,6 +50,16 @@ class GIFController {
         schedule(interval: frameInterval(from: 0.0))
     }
 
+    func restart() {
+        guard !frames.isEmpty else { return }
+        stop()
+        currentIndex = 0
+        let firstFrame = frames[currentIndex]
+        currentIndex = (currentIndex + 1) % frames.count
+        DispatchQueue.main.async { self.onFrame?(firstFrame) }
+        schedule(interval: frameInterval(from: lastUsage))
+    }
+
     func stop() {
         frameTimer?.cancel()
         frameTimer = nil

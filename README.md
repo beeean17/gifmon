@@ -91,11 +91,12 @@ CPU: 45% | RAM: 62%          ← live stats (read-only)
   메뉴바 아이콘 초기화
 ────────────────────
 GIF 추가...                  ← add one or more GIF/APNG files
+전체 GIF 다시 시작           ← restart every GIF from frame 1 for sync
 전체 GIF 교체...             ← replace all active overlays
 모든 GIF 제거
 위치 초기화                  ← reset overlay to default position
 ────────────────────
-편집 모드             ☐      ← drag/resize overlays
+편집 모드             ☐      ← drag, resize, or delete individual overlays
 로그인 시 자동 실행   ☐
 ────────────────────
 상단바에서 숨기기            ← remove the menu bar entry until the app is reopened

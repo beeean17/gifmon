@@ -8,6 +8,7 @@ class OverlayContentView: NSView {
         }
     }
     var onFrameChanged: ((NSRect) -> Void)?
+    var onDeleteRequested: (() -> Void)?
 
     private enum Interaction {
         case move(start: NSPoint, origin: NSPoint)
@@ -23,13 +24,16 @@ class OverlayContentView: NSView {
 
     private var interaction: Interaction?
     private var handleLayers: [CALayer] = []
+    private lazy var deleteButton: NSButton = makeDeleteButton()
     private let handleSize: CGFloat = 18
+    private let deleteButtonSize: CGFloat = 22
     private let minimumSide: CGFloat = 48
 
     override init(frame: NSRect) {
         super.init(frame: frame)
         wantsLayer = true
         layer?.contentsGravity = .resizeAspect
+        addSubview(deleteButton)
         updateEditAppearance()
     }
 
@@ -48,12 +52,41 @@ class OverlayContentView: NSView {
         layer?.backgroundColor = NSColor.clear.cgColor
         ensureHandleLayers()
         updateHandleLayers()
+        updateDeleteButtonFrame()
         handleLayers.forEach { $0.isHidden = !isEditMode }
+        deleteButton.isHidden = !isEditMode
     }
 
     override func layout() {
         super.layout()
         updateHandleLayers()
+        updateDeleteButtonFrame()
+    }
+
+    private func makeDeleteButton() -> NSButton {
+        let button = NSButton(frame: .zero)
+        button.bezelStyle = .circular
+        button.isBordered = false
+        button.image = NSImage(systemSymbolName: "xmark", accessibilityDescription: "Delete GIF")
+        button.imageScaling = .scaleProportionallyDown
+        button.contentTintColor = .white
+        button.target = self
+        button.action = #selector(deleteButtonClicked)
+        button.toolTip = "이 GIF 삭제"
+        button.wantsLayer = true
+        button.layer?.backgroundColor = NSColor.systemRed.cgColor
+        button.layer?.cornerRadius = deleteButtonSize / 2
+        button.layer?.borderColor = NSColor.white.withAlphaComponent(0.85).cgColor
+        button.layer?.borderWidth = 1
+        button.isHidden = true
+        return button
+    }
+
+    private func updateDeleteButtonFrame() {
+        deleteButton.frame = NSRect(x: bounds.midX - deleteButtonSize / 2,
+                                    y: bounds.maxY - deleteButtonSize - 4,
+                                    width: deleteButtonSize,
+                                    height: deleteButtonSize)
     }
 
     private func ensureHandleLayers() {
@@ -82,6 +115,7 @@ class OverlayContentView: NSView {
         guard isEditMode, let win = window else { return }
 
         let point = event.locationInWindow
+        if deleteButton.frame.contains(point) { return }
         if let handle = resizeHandle(at: point) {
             interaction = .resize(handle: handle, start: point, frame: win.frame)
         } else {
@@ -112,6 +146,10 @@ class OverlayContentView: NSView {
         if let frame = window?.frame {
             onFrameChanged?(frame)
         }
+    }
+
+    @objc private func deleteButtonClicked() {
+        onDeleteRequested?()
     }
 
     private func handleRects() -> [NSRect] {

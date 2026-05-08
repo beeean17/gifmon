@@ -2,6 +2,11 @@ import AppKit
 
 class OverlayWindowController: NSWindowController {
     let id: String
+    var onDeleteRequested: (() -> Void)? {
+        didSet {
+            gifView?.onDeleteRequested = onDeleteRequested
+        }
+    }
 
     private var gifView: OverlayContentView!
     private let cascadeIndex: Int
@@ -45,6 +50,7 @@ class OverlayWindowController: NSWindowController {
     private func setupContentView() {
         let view = OverlayContentView(frame: NSRect(x: 0, y: 0, width: 150, height: 150))
         view.onFrameChanged = { [weak self] _ in self?.saveFrame() }
+        view.onDeleteRequested = { [weak self] in self?.onDeleteRequested?() }
         window?.contentView = view
         gifView = view
     }

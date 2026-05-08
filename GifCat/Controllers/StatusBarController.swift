@@ -10,6 +10,7 @@ class StatusBarController {
     var onFixedSpeedChange: ((Double) -> Void)?
     var onResourceLinkedToggle: ((Bool) -> Void)?
     var onGIFAdd: (() -> Void)?
+    var onGIFRestartAll: (() -> Void)?
     var onGIFReplaceAll: (() -> Void)?
     var onGIFRemoveAll: (() -> Void)?
     var onMenuBarGIFSelect: (() -> Void)?
@@ -168,6 +169,7 @@ class StatusBarController {
         menu.addItem(.separator())
 
         addItem("GIF 추가...",      action: #selector(addGIF),        to: menu)
+        addItem("전체 GIF 다시 시작", action: #selector(restartAllGIFs), to: menu)
         addItem("전체 GIF 교체...", action: #selector(replaceAllGIFs), to: menu)
         addItem("모든 GIF 제거",    action: #selector(removeAllGIFs),  to: menu)
         addItem("위치 초기화",      action: #selector(resetPosition),  to: menu)
@@ -344,6 +346,7 @@ class StatusBarController {
     }
 
     @objc private func addGIF()        { onGIFAdd?() }
+    @objc private func restartAllGIFs() { onGIFRestartAll?() }
     @objc private func replaceAllGIFs() { onGIFReplaceAll?() }
     @objc private func removeAllGIFs() { onGIFRemoveAll?() }
     @objc private func selectMenuBarGIF() { onMenuBarGIFSelect?() }
