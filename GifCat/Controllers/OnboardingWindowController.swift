@@ -77,7 +77,7 @@ class OnboardingWindowController: NSWindowController {
 
 // MARK: - DropZoneView
 
-private class DropZoneView: NSView, NSDraggingDestination {
+private class DropZoneView: NSView {
     var onFileDropped: ((URL) -> Void)?
     private var isHighlighted = false
 
@@ -106,17 +106,17 @@ private class DropZoneView: NSView, NSDraggingDestination {
 
     // MARK: NSDraggingDestination
 
-    func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
         guard gifURL(from: sender) != nil else { return [] }
         isHighlighted = true; needsDisplay = true
         return .copy
     }
 
-    func draggingExited(_ sender: NSDraggingInfo?) {
+    override func draggingExited(_ sender: NSDraggingInfo?) {
         isHighlighted = false; needsDisplay = true
     }
 
-    func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
         isHighlighted = false; needsDisplay = true
         guard let url = gifURL(from: sender) else { return false }
         onFileDropped?(url)
