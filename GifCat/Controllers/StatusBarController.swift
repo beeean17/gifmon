@@ -7,6 +7,7 @@ class StatusBarController {
     // Callbacks → AppDelegate handles the actual work
     var onMonitorTargetChange: ((MonitorTarget) -> Void)?
     var onScaleChange: ((Double) -> Void)?
+    var onSpeedChange: ((Double, Double) -> Void)?  // (minFPS, maxFPS)
     var onGIFSwap: (() -> Void)?
     var onResetPosition: (() -> Void)?
     var onMoveModeToggle: ((Bool) -> Void)?
@@ -15,6 +16,8 @@ class StatusBarController {
     // Reflected state (set by AppDelegate to keep menu in sync)
     var monitorTarget: MonitorTarget = .cpu { didSet { refreshTargetCheckmarks() } }
     var windowScale: Double = 1.0           { didSet { refreshScaleCheckmarks() } }
+    var speedMinFPS: Double = 5.0           { didSet { refreshSpeedCheckmarks() } }
+    var speedMaxFPS: Double = 30.0          { didSet { refreshSpeedCheckmarks() } }
     var isMoveMode: Bool = false            { didSet { moveModeItem?.state = isMoveMode ? .on : .off } }
     var launchAtLogin: Bool = false         { didSet { launchAtLoginItem?.state = launchAtLogin ? .on : .off } }
 
@@ -28,6 +31,8 @@ class StatusBarController {
     private var largeItem: NSMenuItem?
     private var moveModeItem: NSMenuItem?
     private var launchAtLoginItem: NSMenuItem?
+    private var speedMinItems: [NSMenuItem] = []
+    private var speedMaxItems: [NSMenuItem] = []
 
     // MARK: - Init
 
@@ -93,6 +98,13 @@ class StatusBarController {
 
         menu.addItem(.separator())
 
+        // 속도
+        let speedMenuItem = NSMenuItem(title: "속도", action: nil, keyEquivalent: "")
+        speedMenuItem.submenu = buildSpeedSubMenu()
+        menu.addItem(speedMenuItem)
+
+        menu.addItem(.separator())
+
         // 크기
         addHeader("크기", to: menu)
         smallItem  = addItem("작게 (0.5x)", action: #selector(selectSmall),  indent: 1, to: menu)
@@ -115,7 +127,42 @@ class StatusBarController {
 
         refreshTargetCheckmarks()
         refreshScaleCheckmarks()
+        refreshSpeedCheckmarks()
         return menu
+    }
+
+    private func buildSpeedSubMenu() -> NSMenu {
+        let sub = NSMenu()
+
+        let minHeader = NSMenuItem(title: "최소 속도 (유휴 시)", action: nil, keyEquivalent: "")
+        minHeader.isEnabled = false
+        sub.addItem(minHeader)
+
+        for fps in [5.0, 10.0, 15.0, 20.0] {
+            let item = NSMenuItem(title: "\(Int(fps)) fps", action: #selector(selectMinFPS(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = fps
+            item.indentationLevel = 1
+            sub.addItem(item)
+            speedMinItems.append(item)
+        }
+
+        sub.addItem(.separator())
+
+        let maxHeader = NSMenuItem(title: "최대 속도 (최대 부하 시)", action: nil, keyEquivalent: "")
+        maxHeader.isEnabled = false
+        sub.addItem(maxHeader)
+
+        for fps in [20.0, 30.0, 60.0] {
+            let item = NSMenuItem(title: "\(Int(fps)) fps", action: #selector(selectMaxFPS(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = fps
+            item.indentationLevel = 1
+            sub.addItem(item)
+            speedMaxItems.append(item)
+        }
+
+        return sub
     }
 
     @discardableResult
@@ -148,6 +195,15 @@ class StatusBarController {
         largeItem?.state  = windowScale == 1.5 ? .on : .off
     }
 
+    private func refreshSpeedCheckmarks() {
+        for item in speedMinItems {
+            item.state = (item.representedObject as? Double) == speedMinFPS ? .on : .off
+        }
+        for item in speedMaxItems {
+            item.state = (item.representedObject as? Double) == speedMaxFPS ? .on : .off
+        }
+    }
+
     // MARK: - Actions
 
     @objc private func selectCPU()  { monitorTarget = .cpu;  onMonitorTargetChange?(.cpu) }
@@ -157,6 +213,18 @@ class StatusBarController {
     @objc private func selectSmall()  { windowScale = 0.5; onScaleChange?(0.5) }
     @objc private func selectMedium() { windowScale = 1.0; onScaleChange?(1.0) }
     @objc private func selectLarge()  { windowScale = 1.5; onScaleChange?(1.5) }
+
+    @objc private func selectMinFPS(_ sender: NSMenuItem) {
+        guard let fps = sender.representedObject as? Double else { return }
+        speedMinFPS = min(fps, speedMaxFPS - 5)
+        onSpeedChange?(speedMinFPS, speedMaxFPS)
+    }
+
+    @objc private func selectMaxFPS(_ sender: NSMenuItem) {
+        guard let fps = sender.representedObject as? Double else { return }
+        speedMaxFPS = max(fps, speedMinFPS + 5)
+        onSpeedChange?(speedMinFPS, speedMaxFPS)
+    }
 
     @objc private func swapGIF()       { onGIFSwap?() }
     @objc private func resetPosition() { onResetPosition?() }

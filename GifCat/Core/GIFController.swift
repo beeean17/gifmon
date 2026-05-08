@@ -15,6 +15,10 @@ class GIFController {
 
     var onFrame: ((CGImage) -> Void)?
 
+    var minFPS: Double = 5.0  { didSet { rescheduleCurrent() } }
+    var maxFPS: Double = 30.0 { didSet { rescheduleCurrent() } }
+
+    private var lastUsage: Double = 0.0
     private let queue = DispatchQueue(label: "com.gifmon.gif-controller", qos: .userInteractive)
 
     // MARK: - Public
@@ -50,10 +54,16 @@ class GIFController {
 
     func updateSpeed(usage: Double) {
         guard !frames.isEmpty else { return }
+        lastUsage = usage
         schedule(interval: frameInterval(from: usage))
     }
 
     // MARK: - Private
+
+    private func rescheduleCurrent() {
+        guard !frames.isEmpty else { return }
+        schedule(interval: frameInterval(from: lastUsage))
+    }
 
     private func schedule(interval: TimeInterval) {
         frameTimer?.cancel()
@@ -69,10 +79,9 @@ class GIFController {
         frameTimer = t
     }
 
-    // usage 0.0 → 5fps(200ms),  usage 1.0 → 30fps(33ms)
     private func frameInterval(from usage: Double) -> TimeInterval {
-        let minInterval = 0.033  // ~30fps at usage 1.0
-        let maxInterval = 0.200  //   5fps at usage 0.0
-        return maxInterval - (usage * (maxInterval - minInterval))
+        let minInterval = 1.0 / maxFPS  // fastest (at full load)
+        let maxInterval = 1.0 / minFPS  // slowest (at idle)
+        return maxInterval - usage * (maxInterval - minInterval)
     }
 }

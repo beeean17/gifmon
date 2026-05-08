@@ -17,12 +17,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         monitorTarget = MonitorTarget(rawValue: defaults.integer(forKey: UserDefaultsKeys.monitorTarget)) ?? .cpu
         let scale    = defaults.object(forKey: UserDefaultsKeys.windowScale) as? Double ?? 1.0
         let moveMode = defaults.bool(forKey: UserDefaultsKeys.moveMode)
+        let minFPS   = defaults.object(forKey: UserDefaultsKeys.speedMinFPS) as? Double ?? 5.0
+        let maxFPS   = defaults.object(forKey: UserDefaultsKeys.speedMaxFPS) as? Double ?? 30.0
 
         // Overlay window (hidden until GIF is loaded)
         let ow = OverlayWindowController()
         overlay = ow
         ow.setScale(scale)
         ow.setMoveMode(moveMode)
+
+        gifController.minFPS = minFPS
+        gifController.maxFPS = maxFPS
 
         gifController.onFrame = { [weak ow] image in
             ow?.updateFrame(image)
@@ -33,6 +38,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         statusBar = sb
         sb.monitorTarget = monitorTarget
         sb.windowScale   = scale
+        sb.speedMinFPS   = minFPS
+        sb.speedMaxFPS   = maxFPS
         sb.isMoveMode    = moveMode
         // Sync with actual SMAppService state (truth), not just stored pref
         let actualLaunchAtLogin = SMAppService.mainApp.status == .enabled
@@ -45,6 +52,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         sb.onScaleChange = { [weak ow] newScale in
             ow?.setScale(newScale)
+        }
+        sb.onSpeedChange = { [weak self] min, max in
+            self?.gifController.minFPS = min
+            self?.gifController.maxFPS = max
+            defaults.set(min, forKey: UserDefaultsKeys.speedMinFPS)
+            defaults.set(max, forKey: UserDefaultsKeys.speedMaxFPS)
         }
         sb.onGIFSwap = { [weak self] in
             self?.openGIFPanel()

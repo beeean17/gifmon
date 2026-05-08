@@ -8,4 +8,6 @@ enum UserDefaultsKeys {
     static let monitorTarget = "monitorTarget"
     static let launchAtLogin = "launchAtLogin"
     static let moveMode      = "moveMode"
+    static let speedMinFPS   = "speedMinFPS"
+    static let speedMaxFPS   = "speedMaxFPS"
 }
