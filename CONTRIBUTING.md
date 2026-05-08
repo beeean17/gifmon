@@ -40,11 +40,11 @@ GifCat/
 **Data flow**
 
 ```
-ResourceMonitor ──(cpu, ram)──▶ AppDelegate ──(usage)──▶ GIFController
+ResourceMonitor ──(cpu, ram)──▶ AppDelegate ──(usage)──▶ [GIFController...]
                                                                │
                                                           (CGImage frame)
                                                                ▼
-                                                     OverlayWindowController
+                                [OverlayWindowController...] + StatusBarController
 ```
 
 ## How to Add a Feature
@@ -100,7 +100,13 @@ frameInterval = (1/minFPS) - usage × (1/minFPS - 1/maxFPS)
 - `usage 0.0` (idle) → `minFPS`
 - `usage 1.0` (full load) → `maxFPS`
 
-The user selects values from the **속도** submenu in `StatusBarController`. Changes are applied immediately via `didSet` observers on `GIFController.minFPS` / `maxFPS`, without waiting for the next `ResourceMonitor` tick. Settings persist via `UserDefaults` keys `speedMinFPS` and `speedMaxFPS`.
+The user selects values from the **속도** submenu in `StatusBarController`. Changes are applied immediately to every active `GIFController`, without waiting for the next `ResourceMonitor` tick. Settings persist via `UserDefaults` keys `speedMinFPS` and `speedMaxFPS`.
+
+When **리소스 연동** is off, `fixedFPS` is used as the playback speed. When it is on, CPU/RAM usage maps between `minFPS` and `maxFPS`.
+
+The menu bar icon can also be animated with its own `GIFController`. It shares the same speed settings as overlays, but renders frames through `StatusBarController.updateMenuBarFrame(_:)`.
+
+The status item itself can be removed with **상단바에서 숨기기**. `StatusBarController.hideFromMenuBar()` removes the current `NSStatusItem`, and `AppDelegate.applicationShouldHandleReopen` restores it when the user launches the already-running app again.
 
 To add more preset options, edit the `for fps in [...]` arrays in `StatusBarController.buildSpeedSubMenu()`.
 
@@ -112,16 +118,17 @@ To add more preset options, edit the `for fps in [...]` arrays in `StatusBarCont
 
 ### 1. Multiple Characters (Multiple Overlay Windows)
 
-**Goal**: Let users run several GIF overlays simultaneously, each with its own file, position, and size.
+**Status**: Basic support is implemented. Users can add several GIF/APNG overlays, replace all overlays, remove all overlays, and edit each overlay's frame.
 
-**Design**:
-- Replace the single `overlay: OverlayWindowController?` in `AppDelegate` with an array: `var overlays: [OverlayWindowController]`
-- Each overlay instance is independent — owns its own `GIFController` and position in `UserDefaults`
-- `UserDefaults` keys need to be namespaced per-instance, e.g. `overlay.0.gifFilePath`, `overlay.0.windowX` — consider a `[String: Any]` array stored under a single `overlays` key
-- "캐릭터 추가" menu item creates a new `OverlayWindowController` + `GIFController` pair and opens the onboarding panel for it
-- "캐릭터 제거" submenu lists active overlays by filename and removes the selected one
-- All overlays share the same `ResourceMonitor` — pass the usage value to each `GIFController.updateSpeed(usage:)`
-- `StatusBarController` needs a way to list/remove overlays; consider a delegate protocol or callback array
+**Current design**:
+- `AppDelegate` owns an array of managed overlay records
+- Each overlay instance owns its own `GIFController` and `OverlayWindowController`
+- Overlay window frames are namespaced in `UserDefaults`
+- The active overlay list is stored under `gifOverlays`
+- All overlays share one `ResourceMonitor`
+
+**Potential next step**:
+- Add a per-GIF remove submenu that lists active overlays by filename
 
 **Files to touch**:
 - `GifCat/App/AppDelegate.swift` (main orchestration change)

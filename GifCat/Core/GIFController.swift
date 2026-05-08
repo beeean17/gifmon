@@ -15,8 +15,10 @@ class GIFController {
 
     var onFrame: ((CGImage) -> Void)?
 
-    var minFPS: Double = 5.0  { didSet { rescheduleCurrent() } }
-    var maxFPS: Double = 30.0 { didSet { rescheduleCurrent() } }
+    var minFPS: Double = 5.0    { didSet { minFPS = sanitizedFPS(minFPS); rescheduleCurrent() } }
+    var maxFPS: Double = 30.0   { didSet { maxFPS = sanitizedFPS(maxFPS); rescheduleCurrent() } }
+    var fixedFPS: Double = 15.0 { didSet { fixedFPS = sanitizedFPS(fixedFPS); rescheduleCurrent() } }
+    var isResourceLinked: Bool = true { didSet { rescheduleCurrent() } }
 
     private var lastUsage: Double = 0.0
     private let queue = DispatchQueue(label: "com.gifmon.gif-controller", qos: .userInteractive)
@@ -24,6 +26,7 @@ class GIFController {
     // MARK: - Public
 
     func load(gifURL: URL) throws {
+        stop()
         guard let source = CGImageSourceCreateWithURL(gifURL as CFURL, nil) else {
             throw GIFError.sourceCreationFailed
         }
@@ -54,8 +57,17 @@ class GIFController {
 
     func updateSpeed(usage: Double) {
         guard !frames.isEmpty else { return }
-        lastUsage = usage
+        lastUsage = max(0.0, min(1.0, usage))
+        guard isResourceLinked else { return }
         schedule(interval: frameInterval(from: usage))
+    }
+
+    func applySpeedSettings(minFPS: Double, maxFPS: Double,
+                            fixedFPS: Double, resourceLinked: Bool) {
+        self.minFPS = sanitizedFPS(minFPS)
+        self.maxFPS = max(sanitizedFPS(maxFPS), self.minFPS + 1.0)
+        self.fixedFPS = sanitizedFPS(fixedFPS)
+        self.isResourceLinked = resourceLinked
     }
 
     // MARK: - Private
@@ -68,7 +80,8 @@ class GIFController {
     private func schedule(interval: TimeInterval) {
         frameTimer?.cancel()
         let t = DispatchSource.makeTimerSource(queue: queue)
-        t.schedule(deadline: .now() + interval, repeating: interval)
+        let safeInterval = max(1.0 / 120.0, interval)
+        t.schedule(deadline: .now() + safeInterval, repeating: safeInterval)
         t.setEventHandler { [weak self] in
             guard let self else { return }
             let frame = self.frames[self.currentIndex]
@@ -80,8 +93,17 @@ class GIFController {
     }
 
     private func frameInterval(from usage: Double) -> TimeInterval {
+        if !isResourceLinked {
+            return 1.0 / max(1.0, fixedFPS)
+        }
+        let clampedUsage = max(0.0, min(1.0, usage))
         let minInterval = 1.0 / maxFPS  // fastest (at full load)
         let maxInterval = 1.0 / minFPS  // slowest (at idle)
-        return maxInterval - usage * (maxInterval - minInterval)
+        return maxInterval - clampedUsage * (maxInterval - minInterval)
+    }
+
+    private func sanitizedFPS(_ value: Double) -> Double {
+        guard value.isFinite else { return 5.0 }
+        return max(1.0, min(120.0, value))
     }
 }

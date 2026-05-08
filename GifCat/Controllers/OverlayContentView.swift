@@ -1,13 +1,36 @@
 import AppKit
 
 class OverlayContentView: NSView {
-    private var dragStart: NSPoint?
-    private var originOnDrag: NSPoint?
+    var isEditMode: Bool = false {
+        didSet {
+            updateEditAppearance()
+            needsDisplay = true
+        }
+    }
+    var onFrameChanged: ((NSRect) -> Void)?
+
+    private enum Interaction {
+        case move(start: NSPoint, origin: NSPoint)
+        case resize(handle: ResizeHandle, start: NSPoint, frame: NSRect)
+    }
+
+    private enum ResizeHandle {
+        case topLeft
+        case topRight
+        case bottomLeft
+        case bottomRight
+    }
+
+    private var interaction: Interaction?
+    private var handleLayers: [CALayer] = []
+    private let handleSize: CGFloat = 18
+    private let minimumSide: CGFloat = 48
 
     override init(frame: NSRect) {
         super.init(frame: frame)
         wantsLayer = true
         layer?.contentsGravity = .resizeAspect
+        updateEditAppearance()
     }
 
     required init?(coder: NSCoder) { fatalError("not used") }
@@ -17,32 +40,149 @@ class OverlayContentView: NSView {
         layer?.contents = cgImage
     }
 
-    // MARK: - Mouse events (active only when window.ignoresMouseEvents = false)
+    // MARK: - Edit mode
+
+    private func updateEditAppearance() {
+        layer?.borderWidth = isEditMode ? 2 : 0
+        layer?.borderColor = NSColor.controlAccentColor.cgColor
+        layer?.backgroundColor = NSColor.clear.cgColor
+        ensureHandleLayers()
+        updateHandleLayers()
+        handleLayers.forEach { $0.isHidden = !isEditMode }
+    }
+
+    override func layout() {
+        super.layout()
+        updateHandleLayers()
+    }
+
+    private func ensureHandleLayers() {
+        guard handleLayers.isEmpty, let layer else { return }
+        handleLayers = (0..<4).map { _ in
+            let handle = CALayer()
+            handle.backgroundColor = NSColor.controlAccentColor.cgColor
+            handle.cornerRadius = 3
+            handle.isHidden = !isEditMode
+            layer.addSublayer(handle)
+            return handle
+        }
+    }
+
+    private func updateHandleLayers() {
+        guard handleLayers.count == 4 else { return }
+        for (index, rect) in handleRects().enumerated() {
+            handleLayers[index].frame = rect
+        }
+    }
 
     override var acceptsFirstResponder: Bool { true }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
     override func mouseDown(with event: NSEvent) {
-        dragStart = event.locationInWindow
-        originOnDrag = window?.frame.origin
+        guard isEditMode, let win = window else { return }
+
+        let point = event.locationInWindow
+        if let handle = resizeHandle(at: point) {
+            interaction = .resize(handle: handle, start: point, frame: win.frame)
+        } else {
+            interaction = .move(start: point, origin: win.frame.origin)
+        }
     }
 
     override func mouseDragged(with event: NSEvent) {
-        guard let start = dragStart,
-              let origin = originOnDrag,
-              let win = window else { return }
-        let dx = event.locationInWindow.x - start.x
-        let dy = event.locationInWindow.y - start.y
-        win.setFrameOrigin(NSPoint(x: origin.x + dx, y: origin.y + dy))
+        guard isEditMode, let win = window, let interaction else { return }
+
+        let point = event.locationInWindow
+        switch interaction {
+        case let .move(start, origin):
+            let dx = point.x - start.x
+            let dy = point.y - start.y
+            win.setFrameOrigin(clampedOrigin(NSPoint(x: origin.x + dx, y: origin.y + dy),
+                                             size: win.frame.size))
+        case let .resize(handle, start, frame):
+            let dx = point.x - start.x
+            let dy = point.y - start.y
+            win.setFrame(resizedFrame(from: frame, handle: handle, dx: dx, dy: dy),
+                         display: true)
+        }
     }
 
     override func mouseUp(with event: NSEvent) {
-        // Persist final position after drag ends
-        if let origin = window?.frame.origin {
-            UserDefaults.standard.set(origin.x, forKey: UserDefaultsKeys.windowX)
-            UserDefaults.standard.set(origin.y, forKey: UserDefaultsKeys.windowY)
+        interaction = nil
+        if let frame = window?.frame {
+            onFrameChanged?(frame)
         }
-        dragStart = nil
-        originOnDrag = nil
+    }
+
+    private func handleRects() -> [NSRect] {
+        [
+            NSRect(x: 0, y: 0, width: handleSize, height: handleSize),
+            NSRect(x: bounds.maxX - handleSize, y: 0, width: handleSize, height: handleSize),
+            NSRect(x: 0, y: bounds.maxY - handleSize, width: handleSize, height: handleSize),
+            NSRect(x: bounds.maxX - handleSize, y: bounds.maxY - handleSize,
+                   width: handleSize, height: handleSize),
+        ]
+    }
+
+    private func resizeHandle(at point: NSPoint) -> ResizeHandle? {
+        let bottomLeft = NSRect(x: 0, y: 0, width: handleSize, height: handleSize)
+        let bottomRight = NSRect(x: bounds.maxX - handleSize, y: 0,
+                                 width: handleSize, height: handleSize)
+        let topLeft = NSRect(x: 0, y: bounds.maxY - handleSize,
+                             width: handleSize, height: handleSize)
+        let topRight = NSRect(x: bounds.maxX - handleSize, y: bounds.maxY - handleSize,
+                              width: handleSize, height: handleSize)
+
+        if bottomLeft.contains(point) { return .bottomLeft }
+        if bottomRight.contains(point) { return .bottomRight }
+        if topLeft.contains(point) { return .topLeft }
+        if topRight.contains(point) { return .topRight }
+        return nil
+    }
+
+    private func resizedFrame(from frame: NSRect, handle: ResizeHandle,
+                              dx: CGFloat, dy: CGFloat) -> NSRect {
+        var next = frame
+        switch handle {
+        case .bottomLeft:
+            let width = max(minimumSide, frame.width - dx)
+            let height = max(minimumSide, frame.height - dy)
+            next.origin.x = frame.maxX - width
+            next.origin.y = frame.maxY - height
+            next.size = NSSize(width: width, height: height)
+        case .bottomRight:
+            next.size.width = max(minimumSide, frame.width + dx)
+            let height = max(minimumSide, frame.height - dy)
+            next.origin.y = frame.maxY - height
+            next.size.height = height
+        case .topLeft:
+            let width = max(minimumSide, frame.width - dx)
+            next.origin.x = frame.maxX - width
+            next.size.width = width
+            next.size.height = max(minimumSide, frame.height + dy)
+        case .topRight:
+            next.size.width = max(minimumSide, frame.width + dx)
+            next.size.height = max(minimumSide, frame.height + dy)
+        }
+
+        if let screen = NSScreen.screens.first(where: { $0.visibleFrame.intersects(next) }) ?? NSScreen.main {
+            next.origin = clampedOrigin(next.origin, size: next.size, visibleFrame: screen.visibleFrame)
+        }
+        return next
+    }
+
+    private func clampedOrigin(_ origin: NSPoint, size: NSSize) -> NSPoint {
+        let visibleFrame = NSScreen.screens.first { $0.visibleFrame.contains(origin) }?.visibleFrame
+            ?? NSScreen.main?.visibleFrame
+        return clampedOrigin(origin, size: size, visibleFrame: visibleFrame)
+    }
+
+    private func clampedOrigin(_ origin: NSPoint, size: NSSize,
+                               visibleFrame: NSRect?) -> NSPoint {
+        guard let visibleFrame else { return origin }
+        return NSPoint(
+            x: min(max(origin.x, visibleFrame.minX), visibleFrame.maxX - size.width),
+            y: min(max(origin.y, visibleFrame.minY), visibleFrame.maxY - size.height)
+        )
     }
 }

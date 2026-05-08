@@ -1,15 +1,30 @@
 import AppKit
 
 class OverlayWindowController: NSWindowController {
+    let id: String
+
     private var gifView: OverlayContentView!
+    private let cascadeIndex: Int
+    private let defaultsPrefix: String
 
     // MARK: - Init
 
-    convenience init() {
-        self.init(window: OverlayWindowController.makeWindow())
-        setupContentView()
-        restorePosition()
+    convenience init(id: String = "default", cascadeIndex: Int = 0) {
+        self.init(window: OverlayWindowController.makeWindow(),
+                  id: id,
+                  cascadeIndex: cascadeIndex)
     }
+
+    private init(window: NSWindow, id: String, cascadeIndex: Int) {
+        self.id = id
+        self.cascadeIndex = cascadeIndex
+        self.defaultsPrefix = "overlay.\(id)."
+        super.init(window: window)
+        setupContentView()
+        restoreFrame()
+    }
+
+    required init?(coder: NSCoder) { fatalError("not used") }
 
     private static func makeWindow() -> NSWindow {
         let win = NSWindow(
@@ -23,12 +38,13 @@ class OverlayWindowController: NSWindowController {
         win.backgroundColor = .clear
         win.hasShadow = false
         win.collectionBehavior = [.canJoinAllSpaces, .stationary]
-        win.ignoresMouseEvents = true  // click-through by default
+        win.ignoresMouseEvents = true
         return win
     }
 
     private func setupContentView() {
         let view = OverlayContentView(frame: NSRect(x: 0, y: 0, width: 150, height: 150))
+        view.onFrameChanged = { [weak self] _ in self?.saveFrame() }
         window?.contentView = view
         gifView = view
     }
@@ -42,47 +58,68 @@ class OverlayWindowController: NSWindowController {
         gifView.updateFrame(cgImage)
     }
 
-    func setMoveMode(_ enabled: Bool) {
+    func setEditMode(_ enabled: Bool) {
         window?.ignoresMouseEvents = !enabled
+        gifView.isEditMode = enabled
+    }
+
+    func setMoveMode(_ enabled: Bool) {
+        setEditMode(enabled)
     }
 
     func setScale(_ scale: Double) {
-        let side = 150.0 * scale
+        let side = max(48.0, 150.0 * scale)
         guard let win = window else { return }
         let newFrame = NSRect(x: win.frame.origin.x,
                               y: win.frame.origin.y,
-                              width: side, height: side)
+                              width: side,
+                              height: side)
         win.setFrame(newFrame, display: true)
-        UserDefaults.standard.set(scale, forKey: UserDefaultsKeys.windowScale)
+        saveFrame()
     }
 
     func resetPosition() {
-        setDefaultPosition()
-        savePosition()
+        setDefaultFrame()
+        saveFrame()
     }
 
-    // MARK: - Position persistence
+    // MARK: - Frame persistence
 
-    func savePosition() {
-        guard let origin = window?.frame.origin else { return }
-        UserDefaults.standard.set(origin.x, forKey: UserDefaultsKeys.windowX)
-        UserDefaults.standard.set(origin.y, forKey: UserDefaultsKeys.windowY)
-    }
-
-    private func restorePosition() {
+    func saveFrame() {
+        guard let frame = window?.frame else { return }
         let defaults = UserDefaults.standard
-        if let x = defaults.object(forKey: UserDefaultsKeys.windowX) as? Double,
-           let y = defaults.object(forKey: UserDefaultsKeys.windowY) as? Double {
-            window?.setFrameOrigin(NSPoint(x: x, y: y))
+        defaults.set(frame.origin.x, forKey: key(UserDefaultsKeys.windowX))
+        defaults.set(frame.origin.y, forKey: key(UserDefaultsKeys.windowY))
+        defaults.set(frame.width, forKey: key(UserDefaultsKeys.windowWidth))
+        defaults.set(frame.height, forKey: key(UserDefaultsKeys.windowHeight))
+    }
+
+    private func restoreFrame() {
+        let defaults = UserDefaults.standard
+        if let x = defaults.object(forKey: key(UserDefaultsKeys.windowX)) as? Double,
+           let y = defaults.object(forKey: key(UserDefaultsKeys.windowY)) as? Double,
+           let width = defaults.object(forKey: key(UserDefaultsKeys.windowWidth)) as? Double,
+           let height = defaults.object(forKey: key(UserDefaultsKeys.windowHeight)) as? Double {
+            window?.setFrame(NSRect(x: x, y: y,
+                                    width: max(48.0, width),
+                                    height: max(48.0, height)),
+                             display: false)
         } else {
-            setDefaultPosition()
+            setDefaultFrame()
         }
     }
 
-    private func setDefaultPosition() {
+    private func setDefaultFrame() {
         guard let screen = NSScreen.main, let win = window else { return }
-        let x = screen.visibleFrame.maxX - win.frame.width - 50
-        let y = screen.visibleFrame.minY + 100
-        win.setFrameOrigin(NSPoint(x: x, y: y))
+        let size = win.frame.size
+        let offset = CGFloat(cascadeIndex % 8) * 28
+        let x = screen.visibleFrame.maxX - size.width - 50 - offset
+        let y = screen.visibleFrame.minY + 100 + offset
+        win.setFrame(NSRect(x: x, y: y, width: size.width, height: size.height),
+                     display: true)
+    }
+
+    private func key(_ base: String) -> String {
+        "\(defaultsPrefix)\(base)"
     }
 }

@@ -27,13 +27,16 @@ Inspired by [RunCat](https://github.com/takayoshiotake/RunCat_for_macOS) — loa
 ## Features
 
 - **Adaptive speed** — frame rate scales live with CPU / RAM usage
+- **Resource link toggle** — turn adaptive speed on/off; when off, use a separate fixed FPS setting
 - **Speed customization** — set your own min / max FPS from the menu bar
 - **GIF & APNG support** — works with `.gif`, `.png`, and `.apng` files
+- **Multiple overlays** — add several GIF/APNG overlays at once
+- **Animated menu bar icon** — use a GIF/APNG as the status bar icon, RunCat-style
 - **Transparent overlay** — always-on-top, click-through window that follows you across every Space
 - **Bring your own GIF** — no bundled images; drop any GIF/APNG onto the onboarding screen
 - **Configurable monitoring** — track CPU, RAM, or `max(CPU, RAM)`
-- **Resizable overlay** — three sizes: 75 × 75 / 150 × 150 / 225 × 225 px
-- **Drag to reposition** — enable Move Mode from the menu, then drag the overlay anywhere
+- **Resizable overlay** — use preset sizes or edit mode corner handles
+- **Drag to reposition** — enable Edit Mode from the menu, then drag overlays anywhere
 - **Launch at login** — optional auto-start on macOS login
 
 ---
@@ -55,6 +58,7 @@ CPU: 45% | RAM: 62%          ← live stats (read-only)
   ● CPU
   ○ RAM
   ○ CPU + RAM (max)
+리소스 연동                  ← toggle adaptive speed
 ────────────────────
 속도 ▸
   최소 속도 (유휴 시)
@@ -67,20 +71,38 @@ CPU: 45% | RAM: 62%          ← live stats (read-only)
     ○ 20 fps
     ● 30 fps
     ○ 60 fps
+  ─────────────────
+  고정 속도 (연동 OFF)
+    ○ 5 fps
+    ○ 10 fps
+    ● 15 fps
+    ○ 20 fps
+    ○ 30 fps
+    ○ 60 fps
 ────────────────────
 크기
   ○ 작게  (0.5×)
   ● 보통  (1×)
   ○ 크게  (1.5×)
 ────────────────────
-GIF 교체...                  ← swap the current GIF/APNG
+메뉴바 아이콘
+  메뉴바 애니메이션        ☐
+  메뉴바 GIF 선택...
+  메뉴바 아이콘 초기화
+────────────────────
+GIF 추가...                  ← add one or more GIF/APNG files
+전체 GIF 교체...             ← replace all active overlays
+모든 GIF 제거
 위치 초기화                  ← reset overlay to default position
 ────────────────────
-이동 모드             ☐      ← enable to drag the overlay
+편집 모드             ☐      ← drag/resize overlays
 로그인 시 자동 실행   ☐
 ────────────────────
+상단바에서 숨기기            ← remove the menu bar entry until the app is reopened
 종료
 ```
+
+`상단바에서 숨기기` removes GifCat's menu bar icon for the current running session. To bring the menu back, launch GifCat again from Applications, Finder, Spotlight, or Xcode.
 
 ---
 
@@ -102,9 +124,11 @@ Press **⌘R** in Xcode to build and run.
 AppDelegate
 ├── ResourceMonitor          CPU & RAM sampling every 0.5 s (mach API)
 │     CPUSampler             host_processor_info tick-delta wrapper
+├── [GIFOverlay]             one GIFController + one OverlayWindowController per overlay
+├── GIFController            optional menu bar GIF/APNG animation controller
 ├── GIFController            ImageIO frame decode · DispatchSourceTimer
 ├── OverlayWindowController  transparent floating NSWindow · CALayer rendering
-│     OverlayContentView     drag-to-move · position persistence
+│     OverlayContentView     edit-mode drag/resize · frame persistence
 ├── StatusBarController      NSStatusItem · live label · all menu actions
 └── OnboardingWindowController  first-run panel · NSDraggingDestination
 ```
