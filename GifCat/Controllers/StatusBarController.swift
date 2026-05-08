@@ -32,9 +32,12 @@ class StatusBarController {
     // MARK: - Init
 
     init() {
-        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let btn = statusItem.button {
-            btn.image = NSImage(systemSymbolName: "cpu", accessibilityDescription: "GifCat")
+            let img = NSImage(systemSymbolName: "cpu", accessibilityDescription: "GifCat")
+            img?.isTemplate = true
+            btn.image = img
+            btn.title = img == nil ? "GIF" : ""
         }
         statusItem.menu = buildMenu()
     }
@@ -47,10 +50,10 @@ class StatusBarController {
 
     // Shows ⚠ icon + modal alert; called when GIF load fails
     func showGIFError(_ message: String) {
-        statusItem.button?.image = NSImage(
-            systemSymbolName: "exclamationmark.triangle",
-            accessibilityDescription: "GifCat – error"
-        )
+        let errImg = NSImage(systemSymbolName: "exclamationmark.triangle",
+                             accessibilityDescription: "GifCat – error")
+        errImg?.isTemplate = true
+        statusItem.button?.image = errImg
         DispatchQueue.main.async {
             NSApp.activate(ignoringOtherApps: true)
             let alert = NSAlert()
@@ -64,8 +67,9 @@ class StatusBarController {
 
     // Restores normal cpu icon after a successful load
     func clearError() {
-        statusItem.button?.image = NSImage(systemSymbolName: "cpu",
-                                           accessibilityDescription: "GifCat")
+        let img = NSImage(systemSymbolName: "cpu", accessibilityDescription: "GifCat")
+        img?.isTemplate = true
+        statusItem.button?.image = img
     }
 
     // MARK: - Menu construction

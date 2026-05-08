@@ -2,7 +2,6 @@ import AppKit
 import UniformTypeIdentifiers
 import ServiceManagement
 
-@NSApplicationMain
 class AppDelegate: NSObject, NSApplicationDelegate {
     private let monitor = ResourceMonitor()
     private let gifController = GIFController()
@@ -135,9 +134,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func openGIFPanel() {
         let panel = NSOpenPanel()
-        if let gifType = UTType(filenameExtension: "gif") {
-            panel.allowedContentTypes = [gifType]
-        }
+        panel.allowedContentTypes = ["gif", "png", "apng"].compactMap { UTType(filenameExtension: $0) }
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
         panel.message = "GIF 파일을 선택하세요"

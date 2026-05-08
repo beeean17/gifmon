@@ -1,4 +1,11 @@
 import AppKit
 
-// Entry point is in AppDelegate.swift (@NSApplicationMain)
-enum GifCatApp {}
+@main
+struct GifCatApp {
+    static func main() {
+        let app = NSApplication.shared
+        let delegate = AppDelegate()
+        app.delegate = delegate
+        app.run()
+    }
+}

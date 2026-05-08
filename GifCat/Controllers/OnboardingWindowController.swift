@@ -64,12 +64,10 @@ class OnboardingWindowController: NSWindowController {
 
     @objc private func openFilePicker() {
         let panel = NSOpenPanel()
-        if let gifType = UTType(filenameExtension: "gif") {
-            panel.allowedContentTypes = [gifType]
-        }
+        panel.allowedContentTypes = ["gif", "png", "apng"].compactMap { UTType(filenameExtension: $0) }
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
-        panel.message = "GIF 파일을 선택하세요"
+        panel.message = "GIF 또는 APNG 파일을 선택하세요"
         guard panel.runModal() == .OK, let url = panel.url else { return }
         onGIFSelected?(url)
     }
@@ -127,6 +125,6 @@ private class DropZoneView: NSView {
         guard let urls = info.draggingPasteboard
             .readObjects(forClasses: [NSURL.self], options: nil) as? [URL]
         else { return nil }
-        return urls.first { $0.pathExtension.lowercased() == "gif" }
+        return urls.first { ["gif", "png", "apng"].contains($0.pathExtension.lowercased()) }
     }
 }
