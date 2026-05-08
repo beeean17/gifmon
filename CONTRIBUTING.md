@@ -88,14 +88,64 @@ ImageIO already decodes most animated formats. To expose a new extension:
 3. Test on a real Mac (menu bar apps need real hardware)
 4. Open a PR against `main` with a short description of what and why
 
-## Feature Ideas
+## Planned Features (not yet implemented)
 
-Looking for something to build? Here are some ideas:
+Two larger features are planned. Design notes are below — implementation is welcome.
+
+---
+
+### 1. Speed Customization
+
+**Goal**: Let users set their own min/max fps instead of the hardcoded 5–30 range.
+
+**Current behavior** (`GIFController.swift`):
+```swift
+private func frameInterval(from usage: Double) -> TimeInterval {
+    let minInterval = 0.033  // 30 fps
+    let maxInterval = 0.200  //  5 fps
+    return maxInterval - (usage * (maxInterval - minInterval))
+}
+```
+
+**Design**:
+- Add `minFPS: Double` and `maxFPS: Double` properties to `GIFController`
+- Expose a settings UI in `StatusBarController` (slider or text fields in a submenu / separate settings window)
+- Persist via `UserDefaults` — add `speedMinFPS` and `speedMaxFPS` keys to `UserDefaultsKeys.swift`
+- Clamp inputs to a sane range, e.g. min 1 fps, max 60 fps
+
+**Files to touch**:
+- `GifCat/Core/GIFController.swift`
+- `GifCat/Controllers/StatusBarController.swift`
+- `GifCat/Utils/UserDefaultsKeys.swift`
+- `GifCat/App/AppDelegate.swift` (wire the new setting through)
+
+---
+
+### 2. Multiple Characters (Multiple Overlay Windows)
+
+**Goal**: Let users run several GIF overlays simultaneously, each with its own file, position, and size.
+
+**Design**:
+- Replace the single `overlay: OverlayWindowController?` in `AppDelegate` with an array: `var overlays: [OverlayWindowController]`
+- Each overlay instance is independent — owns its own `GIFController` and position in `UserDefaults`
+- `UserDefaults` keys need to be namespaced per-instance, e.g. `overlay.0.gifFilePath`, `overlay.0.windowX` — consider a `[String: Any]` array stored under a single `overlays` key
+- "캐릭터 추가" menu item creates a new `OverlayWindowController` + `GIFController` pair and opens the onboarding panel for it
+- "캐릭터 제거" submenu lists active overlays by filename and removes the selected one
+- All overlays share the same `ResourceMonitor` — pass the usage value to each `GIFController.updateSpeed(usage:)`
+- `StatusBarController` needs a way to list/remove overlays; consider a delegate protocol or callback array
+
+**Files to touch**:
+- `GifCat/App/AppDelegate.swift` (main orchestration change)
+- `GifCat/Controllers/OverlayWindowController.swift` (may need an `id` property)
+- `GifCat/Utils/UserDefaultsKeys.swift` (new namespaced keys)
+- `GifCat/Controllers/StatusBarController.swift` (add/remove character menu items)
+
+---
+
+## Other Ideas
 
 | Feature | Difficulty | Files to touch |
 |---------|-----------|----------------|
-| Configurable fps range (beyond 5–30) | Easy | `GIFController.swift`, `StatusBarController.swift` |
-| Multiple GIFs with random rotation | Medium | `GIFController.swift`, `AppDelegate.swift` |
 | Overlay opacity control | Easy | `OverlayContentView.swift`, `StatusBarController.swift` |
 | CPU threshold alert / notification | Medium | `ResourceMonitor.swift`, `AppDelegate.swift` |
 | Show usage % in menu bar icon | Medium | `StatusBarController.swift` |

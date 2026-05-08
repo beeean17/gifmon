@@ -89,17 +89,33 @@ UI 레이어 확장자 허용 목록: `["gif", "png", "apng"]`
 - `OnboardingWindowController.swift` — 파일 피커 + 드래그 드롭
 - `AppDelegate.swift` — GIF 교체 메뉴
 
-## 기여 아이디어 (미구현 기능)
-기여를 환영합니다. 아래는 좋은 시작점입니다:
+## 계획된 주요 기능 (미구현)
+
+### 1. 속도 커스터마이징
+사용자가 최소/최대 fps를 직접 설정할 수 있도록 확장.
+
+- `GIFController`에 `minFPS`, `maxFPS` 프로퍼티 추가
+- `StatusBarController`에 설정 UI (서브메뉴 슬라이더 또는 설정 윈도우)
+- `UserDefaults` 키: `speedMinFPS`, `speedMaxFPS`
+- 상세 설계: `CONTRIBUTING.md` → "Speed Customization" 참고
+
+### 2. 여러 캐릭터 동시 표시
+오버레이 윈도우를 여러 개 띄울 수 있도록 확장.
+
+- `AppDelegate`의 `overlay: OverlayWindowController?` → `overlays: [OverlayWindowController]` 배열로 교체
+- `UserDefaults` 키를 인스턴스별로 네임스페이스화: `overlay.0.gifFilePath` 등
+- 메뉴에 "캐릭터 추가 / 제거" 항목 추가
+- 모든 오버레이는 동일한 `ResourceMonitor`를 공유
+- 상세 설계: `CONTRIBUTING.md` → "Multiple Characters" 참고
+
+## 기타 기여 아이디어
 
 | 아이디어 | 난이도 | 관련 파일 |
 |---------|--------|-----------|
-| 커스텀 fps 범위 설정 (5~30 외) | 하 | `GIFController.swift`, `StatusBarController.swift` |
-| 여러 GIF 등록 후 랜덤 재생 | 중 | `GIFController.swift`, `AppDelegate.swift` |
 | 오버레이 투명도 조절 | 하 | `OverlayContentView.swift`, `StatusBarController.swift` |
 | CPU 임계값 도달 시 알림 | 중 | `ResourceMonitor.swift`, `AppDelegate.swift` |
-| 메뉴바 아이콘에 현재 사용률 숫자 표시 | 중 | `StatusBarController.swift` |
-| 다크/라이트 모드별 다른 GIF 사용 | 중 | `AppDelegate.swift`, `OverlayWindowController.swift` |
+| 메뉴바 아이콘에 사용률 숫자 표시 | 중 | `StatusBarController.swift` |
+| 다크/라이트 모드별 다른 GIF | 중 | `AppDelegate.swift`, `OverlayWindowController.swift` |
 | WebP 지원 | 하 | `OnboardingWindowController.swift`, `AppDelegate.swift` |
 
 ## 빌드 & 배포
