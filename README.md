@@ -4,6 +4,8 @@
 
 Inspired by [RunCat](https://github.com/takayoshiotake/RunCat_for_macOS) — load **any** GIF or APNG you want, and the animation accelerates as your system gets busier.
 
+![GifCat Demo](assets/demo.gif)
+
 ---
 
 ## Download
@@ -126,3 +128,9 @@ Reported usage = `(total − free − inactive) / total` (inactive pages treated
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+---
+
+## Credits
+
+- Demo character: [Anima Engine](https://animaengine.com)
