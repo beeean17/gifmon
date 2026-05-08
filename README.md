@@ -10,7 +10,7 @@ Inspired by [RunCat](https://github.com/takayoshiotake/RunCat_for_macOS) — loa
 
 ## Download
 
-**[⬇ Download GifCat v1.1.0](https://github.com/Joseng8908/gifmon/releases/latest)**
+**[⬇ Download GifCat v1.2.0](https://github.com/Joseng8908/gifmon/releases/latest)**
 
 1. Download `GifCat.zip` from the link above and unzip it.
 2. Move `GifCat.app` to your **Applications** folder.
@@ -123,15 +123,15 @@ Press **⌘R** in Xcode to build and run.
 
 ```
 AppDelegate
-├── ResourceMonitor          CPU & RAM sampling every 0.5 s (mach API)
-│     CPUSampler             host_processor_info tick-delta wrapper
-├── [GIFOverlay]             one GIFController + one OverlayWindowController per overlay
-├── GIFController            optional menu bar GIF/APNG animation controller
-├── GIFController            ImageIO frame decode · DispatchSourceTimer
-├── OverlayWindowController  transparent floating NSWindow · CALayer rendering
-│     OverlayContentView     edit-mode drag/resize · frame persistence
-├── StatusBarController      NSStatusItem · live label · all menu actions
-└── OnboardingWindowController  first-run panel · NSDraggingDestination
+├── ResourceMonitor               CPU & RAM sampling every 0.5 s (mach API)
+│     CPUSampler                  host_processor_info tick-delta wrapper
+├── [ManagedGIFOverlay] × N       one record per active overlay
+│     GIFController               ImageIO frame decode · DispatchSourceTimer
+│     OverlayWindowController     transparent floating NSWindow · CALayer rendering
+│       OverlayContentView        edit-mode drag/resize · frame persistence
+├── GIFController? (menu bar)     optional animator for the status bar icon
+├── StatusBarController           NSStatusItem · live label · all menu actions
+└── OnboardingWindowController    first-run panel · NSDraggingDestination
 ```
 
 ### Speed mapping

@@ -6,10 +6,10 @@ macOS 메뉴바 앱. CPU/RAM 사용량에 따라 GIF/APNG 애니메이션 속도
 - 번들 ID: `com.gifmon.GifCat`
 - 샌드박스: 비활성화 (mach API 필요)
 - 코드 서명: ad-hoc (`CODE_SIGN_IDENTITY = "-"`)
-- 릴리즈: v1.1.0 태그 완료, GitHub Releases에 바이너리 배포 중
+- 릴리즈: v1.2.0 태그 완료, GitHub Releases에 바이너리 배포 중
 
 ## 구현 완료 상태
-**v1.1.0 출시 완료**
+**v1.2.0 출시 완료**
 
 | Step | 내용 | 상태 |
 |------|------|------|
@@ -22,6 +22,9 @@ macOS 메뉴바 앱. CPU/RAM 사용량에 따라 GIF/APNG 애니메이션 속도
 | 7 | LaunchAtLogin (SMAppService), 에러 핸들링, 로그 정리 | ✅ |
 | 8 | git tag v1.0.0, GitHub Release 배포 | ✅ |
 | 9 | 속도 커스터마이징 (minFPS/maxFPS, 메뉴바 서브메뉴, UserDefaults 저장) | ✅ |
+| 10 | 여러 오버레이 동시 표시 (ManagedGIFOverlay 배열, 편집 모드, 삭제) | ✅ |
+| 11 | 메뉴바 아이콘 GIF 애니메이션, 리소스 연동 ON/OFF, 고정 FPS | ✅ |
+| 12 | 상단바 숨기기 (NSStatusItem 동적 제거/복원) | ✅ |
 
 ## 알려진 macOS 플랫폼 이슈
 
@@ -49,14 +52,16 @@ struct GifCatApp {
 
 ## 아키텍처 요약
 ```
-AppDelegate                  ← 앱 진입점, 모든 컴포넌트 연결
-├── ResourceMonitor          0.5s 주기 CPU/RAM 샘플링
-│     CPUSampler             host_processor_info tick delta 래퍼
-├── GIFController            ImageIO 프레임 디코딩, DispatchSourceTimer
-├── OverlayWindowController  투명 NSWindow (.floating, .canJoinAllSpaces)
-│     OverlayContentView     CALayer 렌더링, 드래그 이동, UserDefaults 위치 저장
-├── StatusBarController      NSStatusItem, 메뉴 빌드, 실시간 레이블
-└── OnboardingWindowController  NSPanel, DropZoneView (NSDraggingDestination)
+AppDelegate                      ← 앱 진입점, 모든 컴포넌트 연결
+├── ResourceMonitor              0.5s 주기 CPU/RAM 샘플링
+│     CPUSampler                 host_processor_info tick delta 래퍼
+├── [ManagedGIFOverlay] × N      활성 오버레이 1개당 1 레코드
+│     GIFController              ImageIO 프레임 디코딩, DispatchSourceTimer
+│     OverlayWindowController    투명 NSWindow (.floating, .canJoinAllSpaces)
+│       OverlayContentView       편집 모드 드래그/리사이즈/삭제, 프레임 저장
+├── GIFController? (메뉴바용)    메뉴바 아이콘 애니메이션 (선택적)
+├── StatusBarController          NSStatusItem 동적 제거/복원, 메뉴 빌드, 실시간 레이블
+└── OnboardingWindowController   NSPanel, DropZoneView (NSDraggingDestination)
 ```
 
 ## 주요 파일 경로
@@ -83,24 +88,15 @@ frameInterval = (1/minFPS) - usage × (1/minFPS - 1/maxFPS)
 ```
 
 ## UserDefaults 키
-`gifFilePath`, `windowX`, `windowY`, `windowScale`, `monitorTarget`, `launchAtLogin`, `moveMode`, `speedMinFPS`, `speedMaxFPS`
+전역: `gifFilePath`(하위호환), `gifOverlays`, `windowScale`, `monitorTarget`, `launchAtLogin`, `moveMode`, `resourceLinked`, `speedMinFPS`, `speedMaxFPS`, `speedFixedFPS`, `menuBarGIFPath`, `menuBarAnimationEnabled`
+
+오버레이별(네임스페이스): `overlay.{id}.windowX`, `overlay.{id}.windowY`, `overlay.{id}.windowWidth`, `overlay.{id}.windowHeight`
 
 ## 지원 파일 형식
 ImageIO(`CGImageSourceCreateWithURL`) 기반이므로 GIF, APNG, PNG 모두 디코딩 가능.
 UI 레이어 확장자 허용 목록: `["gif", "png", "apng"]`
 - `OnboardingWindowController.swift` — 파일 피커 + 드래그 드롭
 - `AppDelegate.swift` — GIF 교체 메뉴
-
-## 계획된 주요 기능 (미구현)
-
-### 1. 여러 캐릭터 동시 표시
-오버레이 윈도우를 여러 개 띄울 수 있도록 확장.
-
-- `AppDelegate`의 `overlay: OverlayWindowController?` → `overlays: [OverlayWindowController]` 배열로 교체
-- `UserDefaults` 키를 인스턴스별로 네임스페이스화: `overlay.0.gifFilePath` 등
-- 메뉴에 "캐릭터 추가 / 제거" 항목 추가
-- 모든 오버레이는 동일한 `ResourceMonitor`를 공유
-- 상세 설계: `CONTRIBUTING.md` → "Multiple Characters" 참고
 
 ## 기타 기여 아이디어
 

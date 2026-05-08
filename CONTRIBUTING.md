@@ -112,31 +112,22 @@ To add more preset options, edit the `for fps in [...]` arrays in `StatusBarCont
 
 ---
 
-## Planned Features (not yet implemented)
+## How Multiple Overlays Work
+
+`AppDelegate` holds an array of `ManagedGIFOverlay` records (defined in `AppDelegate.swift`). Each record owns one `GIFController` and one `OverlayWindowController` pair.
+
+- **Adding**: `AppDelegate.addGIF(url:id:shouldSave:)` — creates a controller/window pair, starts the GIF, appends to the array, and saves the list.
+- **Removing**: `removeGIF(id:)` stops and hides the window, clears its namespaced `UserDefaults` keys, and saves.
+- **Persistence**: `UserDefaults["gifOverlays"]` stores `[[id, path]]`. On launch, `restoreSavedGIFs()` replays this list. Falls back to the legacy `gifFilePath` key for users upgrading from v1.1.
+- **Edit mode**: enabling edit mode sets `window.ignoresMouseEvents = false` and `OverlayContentView.isEditMode = true` for every overlay, revealing drag handles, corner resize handles, and a delete button.
+- **Sync**: `restartAllGIFs()` calls `GIFController.restart()` on every overlay simultaneously so all animations start from frame 1.
+- All overlays share one `ResourceMonitor`.
+
+**Potential next step**: per-GIF individual remove submenu listing active overlays by filename.
 
 ---
 
-### 1. Multiple Characters (Multiple Overlay Windows)
-
-**Status**: Basic support is implemented. Users can add several GIF/APNG overlays, replace all overlays, remove all overlays, and edit each overlay's frame.
-
-**Current design**:
-- `AppDelegate` owns an array of managed overlay records
-- Each overlay instance owns its own `GIFController` and `OverlayWindowController`
-- Overlay window frames are namespaced in `UserDefaults`
-- Edit mode exposes per-overlay move, resize, and delete controls
-- `GIFController.restart()` resets playback to the first frame so all visible GIFs can be synced from the menu
-- The active overlay list is stored under `gifOverlays`
-- All overlays share one `ResourceMonitor`
-
-**Potential next step**:
-- Add a per-GIF remove submenu that lists active overlays by filename
-
-**Files to touch**:
-- `GifCat/App/AppDelegate.swift` (main orchestration change)
-- `GifCat/Controllers/OverlayWindowController.swift` (may need an `id` property)
-- `GifCat/Utils/UserDefaultsKeys.swift` (new namespaced keys)
-- `GifCat/Controllers/StatusBarController.swift` (add/remove character menu items)
+## Planned Features (not yet implemented)
 
 ---
 
