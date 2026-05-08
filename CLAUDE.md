@@ -6,10 +6,10 @@ macOS 메뉴바 앱. CPU/RAM 사용량에 따라 GIF/APNG 애니메이션 속도
 - 번들 ID: `com.gifmon.GifCat`
 - 샌드박스: 비활성화 (mach API 필요)
 - 코드 서명: ad-hoc (`CODE_SIGN_IDENTITY = "-"`)
-- 릴리즈: v1.0.0 태그 완료, GitHub Releases에 바이너리 배포 중
+- 릴리즈: v1.1.0 태그 완료, GitHub Releases에 바이너리 배포 중
 
 ## 구현 완료 상태
-**v1.0.0 출시 완료**
+**v1.1.0 출시 완료**
 
 | Step | 내용 | 상태 |
 |------|------|------|
@@ -21,6 +21,7 @@ macOS 메뉴바 앱. CPU/RAM 사용량에 따라 GIF/APNG 애니메이션 속도
 | 6 | OnboardingWindowController (첫 실행 패널, 드래그 앤 드롭) | ✅ |
 | 7 | LaunchAtLogin (SMAppService), 에러 핸들링, 로그 정리 | ✅ |
 | 8 | git tag v1.0.0, GitHub Release 배포 | ✅ |
+| 9 | 속도 커스터마이징 (minFPS/maxFPS, 메뉴바 서브메뉴, UserDefaults 저장) | ✅ |
 
 ## 알려진 macOS 플랫폼 이슈
 
@@ -76,12 +77,13 @@ GifCat/GifCat.entitlements                  ← 샌드박스 OFF
 
 ## 속도 공식
 ```swift
-frameInterval = 0.200 - usage × (0.200 - 0.033)
-// usage 0.0 → 5fps,  usage 1.0 → 30fps
+// minFPS, maxFPS: GIFController 프로퍼티 (기본 5.0 / 30.0)
+frameInterval = (1/minFPS) - usage × (1/minFPS - 1/maxFPS)
+// usage 0.0 → minFPS,  usage 1.0 → maxFPS
 ```
 
 ## UserDefaults 키
-`gifFilePath`, `windowX`, `windowY`, `windowScale`, `monitorTarget`, `launchAtLogin`, `moveMode`
+`gifFilePath`, `windowX`, `windowY`, `windowScale`, `monitorTarget`, `launchAtLogin`, `moveMode`, `speedMinFPS`, `speedMaxFPS`
 
 ## 지원 파일 형식
 ImageIO(`CGImageSourceCreateWithURL`) 기반이므로 GIF, APNG, PNG 모두 디코딩 가능.
@@ -91,15 +93,7 @@ UI 레이어 확장자 허용 목록: `["gif", "png", "apng"]`
 
 ## 계획된 주요 기능 (미구현)
 
-### 1. 속도 커스터마이징
-사용자가 최소/최대 fps를 직접 설정할 수 있도록 확장.
-
-- `GIFController`에 `minFPS`, `maxFPS` 프로퍼티 추가
-- `StatusBarController`에 설정 UI (서브메뉴 슬라이더 또는 설정 윈도우)
-- `UserDefaults` 키: `speedMinFPS`, `speedMaxFPS`
-- 상세 설계: `CONTRIBUTING.md` → "Speed Customization" 참고
-
-### 2. 여러 캐릭터 동시 표시
+### 1. 여러 캐릭터 동시 표시
 오버레이 윈도우를 여러 개 띄울 수 있도록 확장.
 
 - `AppDelegate`의 `overlay: OverlayWindowController?` → `overlays: [OverlayWindowController]` 배열로 교체

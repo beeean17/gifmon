@@ -88,40 +88,29 @@ ImageIO already decodes most animated formats. To expose a new extension:
 3. Test on a real Mac (menu bar apps need real hardware)
 4. Open a PR against `main` with a short description of what and why
 
-## Planned Features (not yet implemented)
+## How Speed Customization Works
 
-Two larger features are planned. Design notes are below — implementation is welcome.
+The animation speed is controlled by `minFPS` and `maxFPS` properties on `GIFController`. The frame interval is calculated as:
 
----
-
-### 1. Speed Customization
-
-**Goal**: Let users set their own min/max fps instead of the hardcoded 5–30 range.
-
-**Current behavior** (`GIFController.swift`):
 ```swift
-private func frameInterval(from usage: Double) -> TimeInterval {
-    let minInterval = 0.033  // 30 fps
-    let maxInterval = 0.200  //  5 fps
-    return maxInterval - (usage * (maxInterval - minInterval))
-}
+// GifCat/Core/GIFController.swift
+frameInterval = (1/minFPS) - usage × (1/minFPS - 1/maxFPS)
 ```
 
-**Design**:
-- Add `minFPS: Double` and `maxFPS: Double` properties to `GIFController`
-- Expose a settings UI in `StatusBarController` (slider or text fields in a submenu / separate settings window)
-- Persist via `UserDefaults` — add `speedMinFPS` and `speedMaxFPS` keys to `UserDefaultsKeys.swift`
-- Clamp inputs to a sane range, e.g. min 1 fps, max 60 fps
+- `usage 0.0` (idle) → `minFPS`
+- `usage 1.0` (full load) → `maxFPS`
 
-**Files to touch**:
-- `GifCat/Core/GIFController.swift`
-- `GifCat/Controllers/StatusBarController.swift`
-- `GifCat/Utils/UserDefaultsKeys.swift`
-- `GifCat/App/AppDelegate.swift` (wire the new setting through)
+The user selects values from the **속도** submenu in `StatusBarController`. Changes are applied immediately via `didSet` observers on `GIFController.minFPS` / `maxFPS`, without waiting for the next `ResourceMonitor` tick. Settings persist via `UserDefaults` keys `speedMinFPS` and `speedMaxFPS`.
+
+To add more preset options, edit the `for fps in [...]` arrays in `StatusBarController.buildSpeedSubMenu()`.
 
 ---
 
-### 2. Multiple Characters (Multiple Overlay Windows)
+## Planned Features (not yet implemented)
+
+---
+
+### 1. Multiple Characters (Multiple Overlay Windows)
 
 **Goal**: Let users run several GIF overlays simultaneously, each with its own file, position, and size.
 

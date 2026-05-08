@@ -10,7 +10,7 @@ Inspired by [RunCat](https://github.com/takayoshiotake/RunCat_for_macOS) — loa
 
 ## Download
 
-**[⬇ Download GifCat v1.0.0](https://github.com/Joseng8908/gifmon/releases/latest)**
+**[⬇ Download GifCat v1.1.0](https://github.com/Joseng8908/gifmon/releases/latest)**
 
 1. Download `GifCat.zip` from the link above and unzip it.
 2. Move `GifCat.app` to your **Applications** folder.
@@ -26,7 +26,8 @@ Inspired by [RunCat](https://github.com/takayoshiotake/RunCat_for_macOS) — loa
 
 ## Features
 
-- **Adaptive speed** — frame rate scales live with CPU / RAM usage (5 fps → 30 fps)
+- **Adaptive speed** — frame rate scales live with CPU / RAM usage
+- **Speed customization** — set your own min / max FPS from the menu bar
 - **GIF & APNG support** — works with `.gif`, `.png`, and `.apng` files
 - **Transparent overlay** — always-on-top, click-through window that follows you across every Space
 - **Bring your own GIF** — no bundled images; drop any GIF/APNG onto the onboarding screen
@@ -54,6 +55,18 @@ CPU: 45% | RAM: 62%          ← live stats (read-only)
   ● CPU
   ○ RAM
   ○ CPU + RAM (max)
+────────────────────
+속도 ▸
+  최소 속도 (유휴 시)
+    ● 5 fps
+    ○ 10 fps
+    ○ 15 fps
+    ○ 20 fps
+  ─────────────────
+  최대 속도 (최대 부하 시)
+    ○ 20 fps
+    ● 30 fps
+    ○ 60 fps
 ────────────────────
 크기
   ○ 작게  (0.5×)
@@ -100,9 +113,11 @@ AppDelegate
 
 ```swift
 // usage: 0.0 (idle) → 1.0 (full load)
-frameInterval = 0.200 - usage × (0.200 - 0.033)
-//              5 fps at 0%           30 fps at 100%
+// minFPS / maxFPS are user-configurable (default 5 / 30)
+frameInterval = (1/minFPS) - usage × (1/minFPS - 1/maxFPS)
 ```
+
+The default range is 5 fps (idle) → 30 fps (full load). Raise the minimum in the **속도** menu if the animation feels too slow at low usage.
 
 ### CPU sampling
 
