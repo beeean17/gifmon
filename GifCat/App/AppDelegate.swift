@@ -101,13 +101,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - GIF loading
 
     func loadGIF(url: URL) {
+        // File moved/deleted since last session → back to onboarding
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            UserDefaults.standard.removeObject(forKey: UserDefaultsKeys.gifFilePath)
+            showOnboarding()
+            return
+        }
         do {
             try gifController.load(gifURL: url)
             gifController.start()
             UserDefaults.standard.set(url.path, forKey: UserDefaultsKeys.gifFilePath)
             overlay?.showOverlay()
+            statusBar?.clearError()
         } catch {
-            print("[GifCat] GIF load failed: \(error)")
+            statusBar?.showGIFError("'\(url.lastPathComponent)' 파일을 읽을 수 없습니다.")
         }
     }
 

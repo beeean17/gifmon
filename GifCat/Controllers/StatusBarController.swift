@@ -1,4 +1,5 @@
 import AppKit
+import UserNotifications
 
 class StatusBarController {
     private let statusItem: NSStatusItem
@@ -42,6 +43,29 @@ class StatusBarController {
 
     func update(cpu: Double, ram: Double) {
         statsItem?.title = String(format: "  CPU: %.0f%%  |  RAM: %.0f%%", cpu * 100, ram * 100)
+    }
+
+    // Shows ⚠ icon + modal alert; called when GIF load fails
+    func showGIFError(_ message: String) {
+        statusItem.button?.image = NSImage(
+            systemSymbolName: "exclamationmark.triangle",
+            accessibilityDescription: "GifCat – error"
+        )
+        DispatchQueue.main.async {
+            NSApp.activate(ignoringOtherApps: true)
+            let alert = NSAlert()
+            alert.messageText = "GIF 로드 실패"
+            alert.informativeText = message
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "확인")
+            alert.runModal()
+        }
+    }
+
+    // Restores normal cpu icon after a successful load
+    func clearError() {
+        statusItem.button?.image = NSImage(systemSymbolName: "cpu",
+                                           accessibilityDescription: "GifCat")
     }
 
     // MARK: - Menu construction
