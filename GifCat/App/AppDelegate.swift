@@ -1,5 +1,6 @@
 import AppKit
 import UniformTypeIdentifiers
+import ServiceManagement
 
 @NSApplicationMain
 class AppDelegate: NSObject, NSApplicationDelegate {
@@ -34,7 +35,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         sb.monitorTarget = monitorTarget
         sb.windowScale   = scale
         sb.isMoveMode    = moveMode
-        sb.launchAtLogin = defaults.bool(forKey: UserDefaultsKeys.launchAtLogin)
+        // Sync with actual SMAppService state (truth), not just stored pref
+        let actualLaunchAtLogin = SMAppService.mainApp.status == .enabled
+        sb.launchAtLogin = actualLaunchAtLogin
+        defaults.set(actualLaunchAtLogin, forKey: UserDefaultsKeys.launchAtLogin)
 
         sb.onMonitorTargetChange = { [weak self] target in
             self?.monitorTarget = target
@@ -53,9 +57,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             ow?.setMoveMode(enabled)
             defaults.set(enabled, forKey: UserDefaultsKeys.moveMode)
         }
-        sb.onLaunchAtLoginToggle = { enabled in
-            defaults.set(enabled, forKey: UserDefaultsKeys.launchAtLogin)
-            // LaunchAtLogin service: Step 7
+        sb.onLaunchAtLoginToggle = { [weak sb] enabled in
+            do {
+                if enabled {
+                    try SMAppService.mainApp.register()
+                } else {
+                    try SMAppService.mainApp.unregister()
+                }
+                defaults.set(enabled, forKey: UserDefaultsKeys.launchAtLogin)
+            } catch {
+                // Revert toggle on failure
+                sb?.launchAtLogin = !enabled
+            }
         }
 
         // Resource monitor
